@@ -16,13 +16,7 @@ def search():
 
     return jsonify({
         "query": name,
-        "results": [
-            {
-                "name": "John Doe PT",
-                "location": "California",
-                "status": "Active"
-            }
-        ]
+        import requests
     })
 
 if __name__ == "__main__":
