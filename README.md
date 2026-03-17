@@ -261,4 +261,3 @@ GET /api/analytics/dashboard?period=30d
 GET /api/analytics/submissions-trend
 GET /api/analytics/jobs
 ```
-

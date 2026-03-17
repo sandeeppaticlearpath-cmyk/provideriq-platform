@@ -1,0 +1,9 @@
+{
+  "new_dependencies": {
+    "googleapis": "^128.0.0",
+    "@azure/identity": "^4.0.0",
+    "@microsoft/microsoft-graph-client": "^3.0.0",
+    "twilio": "^4.19.0",
+    "google-auth-library": "^9.0.0"
+  }
+}
