@@ -1,26 +1,22 @@
 const express = require('express');
+const router = express.Router();
 const axios = require('axios');
 
-const router = express.Router();
-
+// 🔍 SEARCH DOCTORS
 router.get('/search', async (req, res) => {
-  const { name, specialty } = req.query;
+  try {
+    const name = req.query.name || "";
+    const state = req.query.state || "";
 
-  let url = `https://npiregistry.cms.hhs.gov/api/?version=2.1`;
+    const url = `https://npiregistry.cms.hhs.gov/api/?version=2.1&name=${name}&state=${state}`;
 
-  if (name) url += `&name=${name}`;
-  if (specialty) url += `&taxonomy_description=${specialty}`;
+    const response = await axios.get(url);
 
-  const response = await axios.get(url);
-
-  const results = response.data.results.map(p => ({
-    name: p.basic.name,
-    npi: p.number,
-    specialty: p.taxonomies?.[0]?.desc,
-    address: p.addresses?.[0]?.address_1
-  }));
-
-  res.json(results);
+    res.json(response.data);
+  } catch (error) {
+    console.error("Error fetching providers:", error.message);
+    res.status(500).json({ error: "Something went wrong" });
+  }
 });
 
 module.exports = router;
