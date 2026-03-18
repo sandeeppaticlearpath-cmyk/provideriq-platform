@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ProviderIQ</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background: #0f172a;
+    color: white;
+}
+
+/* HEADER */
+.header {
+    padding: 20px;
+    font-size: 24px;
+    font-weight: bold;
+    background: #020617;
+    border-bottom: 1px solid #1e293b;
+}
+
+/* SEARCH */
+.search-container {
+    text-align: center;
+    margin: 30px;
+}
+
+input {
+    padding: 12px;
+    width: 300px;
+    border-radius: 8px;
+    border: none;
+    outline: none;
+}
+
+button {
+    padding: 12px 18px;
+    margin-left: 10px;
+    border-radius: 8px;
+    border: none;
+    background: #3b82f6;
+    color: white;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #2563eb;
+}
+
+/* FILTERS */
+.filters {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+select {
+    padding: 8px;
+    border-radius: 6px;
+    margin: 5px;
+}
+
+/* RESULTS */
+.results {
+    max-width: 900px;
+    margin: auto;
+}
+
+/* CARD */
+.card {
+    background: #1e293b;
+    padding: 20px;
+    margin: 10px;
+    border-radius: 12px;
+    transition: 0.2s;
+}
+
+.card:hover {
+    transform: scale(1.02);
+    background: #334155;
+}
+
+.name {
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.meta {
+    margin-top: 5px;
+    color: #94a3b8;
+}
+
+/* LOADING */
+.loading {
+    text-align: center;
+    margin-top: 20px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">ProviderIQ 🚀</div>
+
+<div class="search-container">
+    <input type="text" id="name" placeholder="Search provider (e.g. Smith)">
+    <button onclick="search()">Search</button>
+</div>
+
+<div class="filters">
+    <select id="stateFilter">
+        <option value="">All States</option>
+        <option value="CA">CA</option>
+        <option value="TX">TX</option>
+        <option value="NY">NY</option>
+    </select>
+
+    <select id="statusFilter">
+        <option value="">All Status</option>
+        <option value="Active">Active</option>
+        <option value="Inactive">Inactive</option>
+    </select>
+</div>
+
+<div class="loading" id="loading"></div>
+
+<div class="results" id="results"></div>
+
+<script>
+let globalData = [];
+
+function search() {
+    let name = document.getElementById("name").value;
+
+    if (!name) {
+        alert("Enter a name");
+        return;
+    }
+
+    document.getElementById("loading").innerText = "Loading...";
+    document.getElementById("results").innerHTML = "";
+
+    fetch(`/search?name=${name}`)
+        .then(res => res.json())
+        .then(data => {
+            globalData = data.results;
+            document.getElementById("loading").innerText = "";
+            renderResults(globalData);
+        });
+}
+
+function renderResults(data) {
+    let html = "";
+
+    let stateFilter = document.getElementById("stateFilter").value;
+    let statusFilter = document.getElementById("statusFilter").value;
+
+    let filtered = data.filter(p => {
+        return (!stateFilter || p.state === stateFilter) &&
+               (!statusFilter || p.status === statusFilter);
+    });
+
+    filtered.forEach(p => {
+        html += `
+        <div class="card">
+            <div class="name">${p.name}</div>
+            <div class="meta">State: ${p.state}</div>
+            <div class="meta">Status: ${p.status}</div>
+            <div class="meta">NPI: ${p.npi}</div>
+        </div>
+        `;
+    });
+
+    document.getElementById("results").innerHTML = html;
+}
+
+/* FILTER AUTO APPLY */
+document.getElementById("stateFilter").addEventListener("change", () => renderResults(globalData));
+document.getElementById("statusFilter").addEventListener("change", () => renderResults(globalData));
+</script>
+
+</body>
+</html>
