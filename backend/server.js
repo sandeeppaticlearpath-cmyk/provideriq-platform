@@ -10,6 +10,7 @@ const providersRoute = require('./routes/providers');
 
 app.use(cors());
 app.use(express.json());
+app.use('/providers', providersRoute);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/providers', providerRoutes);
