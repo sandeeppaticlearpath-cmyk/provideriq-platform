@@ -7,16 +7,21 @@ app = Flask(__name__, template_folder="templates")
 
 DB_FILE = "providers.json"
 
+
 # ---------- UTIL ----------
 def load_data():
     if not os.path.exists(DB_FILE):
         return []
-    with open(DB_FILE, "r") as f:
-        return json.load(f)
+    try:
+        with open(DB_FILE, "r") as f:
+            return json.load(f)
+    except:
+        return []
+
 
 def save_data(data):
     with open(DB_FILE, "w") as f:
-        json.dump(data, f)
+        json.dump(data, f, indent=2)
 
 
 # ---------- HOME ----------
@@ -31,7 +36,7 @@ def search():
     name = request.args.get("name")
 
     if not name:
-        return jsonify({"error": "No name"}), 400
+        return jsonify({"error": "No name provided"}), 400
 
     parts = name.split()
     first = parts[0]
@@ -45,8 +50,11 @@ def search():
         "limit": 10
     }
 
-    res = requests.get(url, params=params)
-    data = res.json()
+    try:
+        res = requests.get(url, params=params)
+        data = res.json()
+    except:
+        return jsonify({"error": "API request failed"}), 500
 
     results = []
 
@@ -61,7 +69,10 @@ def search():
             "status": basic.get("status", "")
         })
 
-    return jsonify({"results": results})
+    return jsonify({
+        "count": len(results),
+        "results": results
+    })
 
 
 # ---------- SAVE PROVIDER ----------
@@ -69,16 +80,23 @@ def search():
 def save_provider():
     provider = request.json
 
+    if not provider or "npi" not in provider:
+        return jsonify({"error": "Invalid provider data"}), 400
+
     data = load_data()
 
     # prevent duplicates
     if any(p["npi"] == provider["npi"] for p in data):
         return jsonify({"message": "Already saved"})
 
+    # add default fields
+    provider["notes"] = ""
+    provider["tag"] = "New"
+
     data.append(provider)
     save_data(data)
 
-    return jsonify({"message": "Saved"})
+    return jsonify({"message": "Saved successfully"})
 
 
 # ---------- GET SAVED ----------
@@ -87,17 +105,50 @@ def get_saved():
     return jsonify(load_data())
 
 
-# ---------- DELETE ----------
-@app.route("/delete", methods=["POST"])
-def delete_provider():
-    npi = request.json.get("npi")
+# ---------- UPDATE PROVIDER ----------
+@app.route("/update", methods=["POST"])
+def update_provider():
+    updated = request.json
+
+    if not updated or "npi" not in updated:
+        return jsonify({"error": "Invalid update data"}), 400
+
+    npi = updated.get("npi")
 
     data = load_data()
-    data = [p for p in data if p["npi"] != npi]
+
+    for p in data:
+        if p["npi"] == npi:
+            p["notes"] = updated.get("notes", p.get("notes", ""))
+            p["tag"] = updated.get("tag", p.get("tag", "New"))
 
     save_data(data)
 
-    return jsonify({"message": "Deleted"})
+    return jsonify({"message": "Updated successfully"})
+
+
+# ---------- DELETE PROVIDER ----------
+@app.route("/delete", methods=["POST"])
+def delete_provider():
+    req = request.json
+
+    if not req or "npi" not in req:
+        return jsonify({"error": "Invalid request"}), 400
+
+    npi = req.get("npi")
+
+    data = load_data()
+    new_data = [p for p in data if p["npi"] != npi]
+
+    save_data(new_data)
+
+    return jsonify({"message": "Deleted successfully"})
+
+
+# ---------- HEALTH CHECK (OPTIONAL BUT USEFUL) ----------
+@app.route("/health")
+def health():
+    return jsonify({"status": "running"})
 
 
 # ---------- RUN ----------
