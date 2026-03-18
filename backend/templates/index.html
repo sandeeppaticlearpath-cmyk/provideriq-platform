@@ -2,102 +2,164 @@
 <html>
 <head>
     <title>ProviderIQ</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
     <style>
         body {
-            font-family: Arial;
-            background: #0b1220;
-            color: white;
             margin: 0;
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #0f172a, #020617);
+            color: white;
         }
 
         .header {
-            text-align: center;
             padding: 20px;
             font-size: 28px;
             font-weight: bold;
+            text-align: center;
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
         }
 
-        .search-box {
+        .search-container {
             text-align: center;
             margin: 20px;
         }
 
         input {
-            padding: 10px;
+            padding: 12px;
             width: 300px;
-            border-radius: 8px;
+            border-radius: 10px;
             border: none;
+            outline: none;
         }
 
         button {
-            padding: 10px 15px;
+            padding: 12px 18px;
+            border-radius: 10px;
             border: none;
-            border-radius: 8px;
             background: #3b82f6;
             color: white;
             cursor: pointer;
+            margin-left: 10px;
+        }
+
+        button:hover {
+            background: #2563eb;
         }
 
         .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
             padding: 20px;
+        }
+
+        .section {
+            background: rgba(255,255,255,0.05);
+            padding: 15px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+
+        .title {
+            font-size: 20px;
+            margin-bottom: 10px;
         }
 
         .card {
             background: #1e293b;
             padding: 15px;
             margin: 10px 0;
-            border-radius: 10px;
+            border-radius: 12px;
+            transition: 0.2s;
+        }
+
+        .card:hover {
+            transform: scale(1.02);
+            background: #334155;
+        }
+
+        .small {
+            color: #94a3b8;
+            font-size: 14px;
         }
 
         textarea {
             width: 100%;
-            height: 60px;
-            margin-top: 10px;
-            border-radius: 6px;
+            border-radius: 8px;
             border: none;
-            padding: 5px;
+            padding: 8px;
+            margin-top: 8px;
         }
 
         select {
-            margin-top: 10px;
+            margin-top: 8px;
             padding: 5px;
+            border-radius: 6px;
         }
 
-        .section-title {
-            font-size: 20px;
-            margin-top: 30px;
+        .tag {
+            display: inline-block;
+            padding: 4px 8px;
+            background: #22c55e;
+            border-radius: 6px;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #94a3b8;
+        }
+
+        @media(max-width: 800px){
+            .container {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 
 <body>
 
-<div class="header">ProviderIQ 🚀</div>
+<div class="header">🚀 ProviderIQ Dashboard</div>
 
-<div class="search-box">
-    <input id="searchInput" placeholder="Search provider (e.g. Smith)">
+<div class="search-container">
+    <input id="searchInput" placeholder="Search provider (Smith)">
     <button onclick="search()">Search</button>
 </div>
 
 <div class="container">
 
-    <div id="results"></div>
+    <!-- SEARCH RESULTS -->
+    <div class="section">
+        <div class="title">🔍 Search Results</div>
+        <div id="results"></div>
+    </div>
 
-    <div class="section-title">📌 Book of Business</div>
-    <div id="savedContainer"></div>
+    <!-- BOOK OF BUSINESS -->
+    <div class="section">
+        <div class="title">📌 Book of Business</div>
+        <div id="saved"></div>
+    </div>
 
 </div>
 
 <script>
 
-// ------------------ SEARCH ------------------
+// ---------------- SEARCH ----------------
 async function search() {
     const query = document.getElementById('searchInput').value;
+    const resultsDiv = document.getElementById('results');
+
+    resultsDiv.innerHTML = `<div class="loading">Searching...</div>`;
 
     const res = await fetch(`/search?query=${query}`);
     const data = await res.json();
 
-    const resultsDiv = document.getElementById('results');
     resultsDiv.innerHTML = '';
 
     data.forEach(p => {
@@ -105,18 +167,20 @@ async function search() {
         div.className = 'card';
 
         div.innerHTML = `
-            <b>${p.name}</b><br>
-            NPI: ${p.npi}<br>
-            State: ${p.state}<br><br>
-            <button onclick='saveProvider(${JSON.stringify(p)})'>Save</button>
+            <b>${p.name || 'No Name'}</b><br>
+            <span class="small">NPI: ${p.npi}</span><br>
+            <span class="small">${p.address}</span><br>
+            <span class="small">📞 ${p.phone || 'N/A'}</span><br>
+            <span class="tag">${p.specialty || 'Unknown'}</span><br><br>
+            <button onclick='save(${JSON.stringify(p)})'>Save</button>
         `;
 
         resultsDiv.appendChild(div);
     });
 }
 
-// ------------------ SAVE ------------------
-async function saveProvider(provider) {
+// ---------------- SAVE ----------------
+async function save(provider) {
     await fetch('/save_provider', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -126,47 +190,46 @@ async function saveProvider(provider) {
     loadSaved();
 }
 
-// ------------------ LOAD SAVED ------------------
+// ---------------- LOAD SAVED ----------------
 async function loadSaved() {
     const res = await fetch('/get_saved');
     const data = await res.json();
 
-    const container = document.getElementById('savedContainer');
-    container.innerHTML = '';
+    const savedDiv = document.getElementById('saved');
+    savedDiv.innerHTML = '';
 
     data.forEach(p => {
         const div = document.createElement('div');
         div.className = 'card';
 
         div.innerHTML = `
-            <b>${p.name || ''}</b><br>
-            NPI: ${p.npi}<br>
+            <b>${p.name}</b><br>
+            <span class="small">NPI: ${p.npi}</span><br>
+            <span class="small">${p.address}</span><br>
+            <span class="small">📞 ${p.phone || 'N/A'}</span><br>
+            <span class="tag">${p.specialty || 'Unknown'}</span><br>
 
             Status:
-            <select onchange="updateProvider('${p.npi}', this.value, this.nextElementSibling.value)">
+            <select onchange="update('${p.npi}', this.value, this.nextElementSibling.value)">
                 <option ${p.status==='New'?'selected':''}>New</option>
                 <option ${p.status==='Contacted'?'selected':''}>Contacted</option>
                 <option ${p.status==='Hot Lead'?'selected':''}>Hot Lead</option>
                 <option ${p.status==='Closed'?'selected':''}>Closed</option>
             </select>
 
-            <br>
-
-            Notes:
-            <textarea onblur="updateProvider('${p.npi}', this.previousElementSibling.value, this.value)">
-                ${p.notes || ''}
+            <textarea onblur="update('${p.npi}', this.previousElementSibling.value, this.value)">
+${p.notes || ''}
             </textarea>
 
-            <br>
-            <button onclick="deleteProvider('${p.npi}')">Delete</button>
+            <button onclick="del('${p.npi}')">Delete</button>
         `;
 
-        container.appendChild(div);
+        savedDiv.appendChild(div);
     });
 }
 
-// ------------------ UPDATE ------------------
-async function updateProvider(npi, status, notes) {
+// ---------------- UPDATE ----------------
+async function update(npi, status, notes) {
     await fetch('/update_provider', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -174,8 +237,8 @@ async function updateProvider(npi, status, notes) {
     });
 }
 
-// ------------------ DELETE ------------------
-async function deleteProvider(npi) {
+// ---------------- DELETE ----------------
+async function del(npi) {
     await fetch('/delete_provider', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -185,7 +248,7 @@ async function deleteProvider(npi) {
     loadSaved();
 }
 
-// ------------------ LOAD ON START ------------------
+// ---------------- INIT ----------------
 window.onload = loadSaved;
 
 </script>
