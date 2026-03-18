@@ -9,11 +9,17 @@ DATA_FILE = "providers.json"
 
 
 # ----------------------------
-# Helper: Load data
+# INIT FILE
+# ----------------------------
+if not os.path.exists(DATA_FILE):
+    with open(DATA_FILE, "w") as f:
+        json.dump([], f)
+
+
+# ----------------------------
+# LOAD DATA
 # ----------------------------
 def load_data():
-    if not os.path.exists(DATA_FILE):
-        return []
     try:
         with open(DATA_FILE, "r") as f:
             return json.load(f)
@@ -22,15 +28,15 @@ def load_data():
 
 
 # ----------------------------
-# Helper: Save data
+# SAVE DATA
 # ----------------------------
 def save_data(data):
     with open(DATA_FILE, "w") as f:
-        json.dump(data, f)
+        json.dump(data, f, indent=2)
 
 
 # ----------------------------
-# Home route (UI)
+# HOME (UI)
 # ----------------------------
 @app.route("/")
 def home():
@@ -38,7 +44,7 @@ def home():
 
 
 # ----------------------------
-# Search providers (NPI API)
+# SEARCH (NPI REGISTRY)
 # ----------------------------
 @app.route("/search")
 def search():
@@ -47,20 +53,26 @@ def search():
     url = "https://npiregistry.cms.hhs.gov/api/"
     params = {
         "version": "2.1",
-        "last_name": query
+        "last_name": query,
+        "limit": 15
     }
 
-    res = requests.get(url, params=params)
-    data = res.json()
+    try:
+        res = requests.get(url, params=params)
+        data = res.json()
+    except:
+        return jsonify([])
 
     providers = []
 
     for item in data.get("results", []):
         basic = item.get("basic", {})
+        address = item.get("addresses", [{}])[0]
+
         providers.append({
             "name": basic.get("name", ""),
             "npi": item.get("number", ""),
-            "state": item.get("addresses", [{}])[0].get("state", ""),
+            "state": address.get("state", ""),
             "status": "New",
             "notes": ""
         })
@@ -69,14 +81,14 @@ def search():
 
 
 # ----------------------------
-# Save provider
+# SAVE PROVIDER
 # ----------------------------
 @app.route("/save_provider", methods=["POST"])
 def save_provider():
     new_provider = request.json
     data = load_data()
 
-    # Avoid duplicates by NPI
+    # Prevent duplicates
     if not any(p["npi"] == new_provider["npi"] for p in data):
         data.append(new_provider)
         save_data(data)
@@ -85,16 +97,15 @@ def save_provider():
 
 
 # ----------------------------
-# Get saved providers
+# GET SAVED (BOOK OF BUSINESS)
 # ----------------------------
 @app.route("/get_saved", methods=["GET"])
 def get_saved():
-    data = load_data()
-    return jsonify(data)
+    return jsonify(load_data())
 
 
 # ----------------------------
-# Update provider (status + notes)
+# UPDATE PROVIDER
 # ----------------------------
 @app.route("/update_provider", methods=["POST"])
 def update_provider():
@@ -103,15 +114,30 @@ def update_provider():
 
     for p in data:
         if p["npi"] == updated["npi"]:
-            p["status"] = updated.get("status", p["status"])
-            p["notes"] = updated.get("notes", p["notes"])
+            p["status"] = updated.get("status", p.get("status", "New"))
+            p["notes"] = updated.get("notes", p.get("notes", ""))
 
     save_data(data)
     return jsonify({"status": "updated"})
 
 
 # ----------------------------
-# Run app
+# DELETE PROVIDER
+# ----------------------------
+@app.route("/delete_provider", methods=["POST"])
+def delete_provider():
+    req = request.json
+    data = load_data()
+
+    data = [p for p in data if p["npi"] != req["npi"]]
+
+    save_data(data)
+    return jsonify({"status": "deleted"})
+
+
+# ----------------------------
+# RUN
 # ----------------------------
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
