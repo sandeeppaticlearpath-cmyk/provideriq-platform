@@ -4,12 +4,10 @@ import os
 
 app = Flask(__name__)
 
-# Home route
 @app.route("/")
 def home():
     return "Backend is working 🚀"
 
-# Search route
 @app.route("/search", methods=["GET"])
 def search():
     name = request.args.get("name")
@@ -19,11 +17,11 @@ def search():
 
     # NPI API URL
     url = "https://npiregistry.cms.hhs.gov/api/"
-
+    
     params = {
         "version": "2.1",
         "name": name,
-        "limit": 5
+        "limit": 10
     }
 
     response = requests.get(url, params=params)
@@ -31,22 +29,23 @@ def search():
 
     results = []
 
-    for item in data.get("results", []):
-        basic = item.get("basic", {})
-        address = item.get("addresses", [{}])[0]
+    if "results" in data:
+        for item in data["results"]:
+            basic = item.get("basic", {})
+            address = item.get("addresses", [{}])[0]
 
-        results.append({
-            "name": basic.get("first_name", "") + " " + basic.get("last_name", ""),
-            "location": address.get("state", ""),
-            "status": basic.get("status", "")
-        })
+            results.append({
+                "name": basic.get("name"),
+                "state": address.get("state"),
+                "status": basic.get("status"),
+                "npi": item.get("number")
+            })
 
     return jsonify({
         "query": name,
         "results": results
     })
 
-# Run app
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
