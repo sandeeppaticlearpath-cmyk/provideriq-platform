@@ -36,7 +36,7 @@ def save_data(data):
 
 
 # ----------------------------
-# HOME (UI)
+# HOME
 # ----------------------------
 @app.route("/")
 def home():
@@ -44,7 +44,7 @@ def home():
 
 
 # ----------------------------
-# SEARCH (NPI REGISTRY)
+# SEARCH (ENHANCED)
 # ----------------------------
 @app.route("/search")
 def search():
@@ -54,7 +54,7 @@ def search():
     params = {
         "version": "2.1",
         "last_name": query,
-        "limit": 15
+        "limit": 20
     }
 
     try:
@@ -67,12 +67,39 @@ def search():
 
     for item in data.get("results", []):
         basic = item.get("basic", {})
-        address = item.get("addresses", [{}])[0]
+        addresses = item.get("addresses", [])
+        taxonomies = item.get("taxonomies", [])
+
+        # ---------------- NAME FIX ----------------
+        first = basic.get("first_name", "")
+        last = basic.get("last_name", "")
+        org = basic.get("organization_name", "")
+
+        name = f"{first} {last}".strip() if first or last else org
+
+        # ---------------- ADDRESS ----------------
+        address = addresses[0] if addresses else {}
+        full_address = f"{address.get('address_1', '')}, {address.get('city', '')}, {address.get('state', '')}"
+
+        # ---------------- PHONE ----------------
+        phone = address.get("telephone_number", "")
+
+        # ---------------- SPECIALTY ----------------
+        specialty = ""
+        if taxonomies:
+            specialty = taxonomies[0].get("desc", "")
+
+        # ---------------- EMAIL (NOT AVAILABLE) ----------------
+        email = ""
 
         providers.append({
-            "name": basic.get("name", ""),
+            "name": name,
             "npi": item.get("number", ""),
+            "address": full_address,
             "state": address.get("state", ""),
+            "phone": phone,
+            "email": email,
+            "specialty": specialty,
             "status": "New",
             "notes": ""
         })
@@ -88,7 +115,6 @@ def save_provider():
     new_provider = request.json
     data = load_data()
 
-    # Prevent duplicates
     if not any(p["npi"] == new_provider["npi"] for p in data):
         data.append(new_provider)
         save_data(data)
@@ -97,7 +123,7 @@ def save_provider():
 
 
 # ----------------------------
-# GET SAVED (BOOK OF BUSINESS)
+# GET SAVED
 # ----------------------------
 @app.route("/get_saved", methods=["GET"])
 def get_saved():
