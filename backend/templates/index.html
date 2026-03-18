@@ -7,37 +7,32 @@
 <style>
 body {
     margin: 0;
-    font-family: 'Segoe UI', sans-serif;
+    font-family: Arial, sans-serif;
     background: #0f172a;
     color: white;
 }
 
-/* HEADER */
 .header {
     padding: 20px;
     font-size: 24px;
-    font-weight: bold;
+    text-align: center;
     background: #020617;
-    border-bottom: 1px solid #1e293b;
 }
 
-/* SEARCH */
-.search-container {
+.search-box {
     text-align: center;
     margin: 30px;
 }
 
 input {
-    padding: 12px;
+    padding: 10px;
     width: 300px;
     border-radius: 8px;
     border: none;
-    outline: none;
 }
 
 button {
-    padding: 12px 18px;
-    margin-left: 10px;
+    padding: 10px 15px;
     border-radius: 8px;
     border: none;
     background: #3b82f6;
@@ -49,52 +44,23 @@ button:hover {
     background: #2563eb;
 }
 
-/* FILTERS */
-.filters {
-    text-align: center;
-    margin-bottom: 20px;
+.results, #saved {
+    padding: 20px;
 }
 
-select {
-    padding: 8px;
-    border-radius: 6px;
-    margin: 5px;
-}
-
-/* RESULTS */
-.results {
-    max-width: 900px;
-    margin: auto;
-}
-
-/* CARD */
 .card {
     background: #1e293b;
-    padding: 20px;
-    margin: 10px;
-    border-radius: 12px;
-    transition: 0.2s;
-}
-
-.card:hover {
-    transform: scale(1.02);
-    background: #334155;
+    padding: 15px;
+    margin: 10px 0;
+    border-radius: 10px;
 }
 
 .name {
-    font-size: 20px;
     font-weight: bold;
 }
 
-.meta {
-    margin-top: 5px;
-    color: #94a3b8;
-}
-
-/* LOADING */
-.loading {
-    text-align: center;
-    margin-top: 20px;
+textarea {
+    margin-top: 10px;
 }
 </style>
 </head>
@@ -103,33 +69,21 @@ select {
 
 <div class="header">ProviderIQ 🚀</div>
 
-<div class="search-container">
+<div class="search-box">
     <input type="text" id="name" placeholder="Search provider (e.g. Smith)">
     <button onclick="search()">Search</button>
 </div>
 
-<div class="filters">
-    <select id="stateFilter">
-        <option value="">All States</option>
-        <option value="CA">CA</option>
-        <option value="TX">TX</option>
-        <option value="NY">NY</option>
-    </select>
-
-    <select id="statusFilter">
-        <option value="">All Status</option>
-        <option value="Active">Active</option>
-        <option value="Inactive">Inactive</option>
-    </select>
-</div>
-
-<div class="loading" id="loading"></div>
-
 <div class="results" id="results"></div>
+
+<hr>
+
+<div id="saved"></div>
 
 <script>
 let globalData = [];
 
+/* SEARCH */
 function search() {
     let name = document.getElementById("name").value;
 
@@ -138,36 +92,27 @@ function search() {
         return;
     }
 
-    document.getElementById("loading").innerText = "Loading...";
-    document.getElementById("results").innerHTML = "";
-
     fetch(`/search?name=${name}`)
-        .then(res => res.json())
-        .then(data => {
-            globalData = data.results;
-            document.getElementById("loading").innerText = "";
-            renderResults(globalData);
-        });
+    .then(res => res.json())
+    .then(data => {
+        globalData = data.results;
+        renderResults(globalData);
+    });
 }
 
+/* SHOW SEARCH RESULTS */
 function renderResults(data) {
-    let html = "";
+    let html = "<h2>Search Results</h2>";
 
-    let stateFilter = document.getElementById("stateFilter").value;
-    let statusFilter = document.getElementById("statusFilter").value;
-
-    let filtered = data.filter(p => {
-        return (!stateFilter || p.state === stateFilter) &&
-               (!statusFilter || p.status === statusFilter);
-    });
-
-    filtered.forEach(p => {
+    data.forEach(p => {
         html += `
         <div class="card">
             <div class="name">${p.name}</div>
-            <div class="meta">State: ${p.state}</div>
-            <div class="meta">Status: ${p.status}</div>
-            <div class="meta">NPI: ${p.npi}</div>
+            <div>State: ${p.state}</div>
+            <div>Status: ${p.status}</div>
+            <div>NPI: ${p.npi}</div>
+
+            <button onclick='saveProvider(${JSON.stringify(p)})'>Save</button>
         </div>
         `;
     });
@@ -175,9 +120,90 @@ function renderResults(data) {
     document.getElementById("results").innerHTML = html;
 }
 
-/* FILTER AUTO APPLY */
-document.getElementById("stateFilter").addEventListener("change", () => renderResults(globalData));
-document.getElementById("statusFilter").addEventListener("change", () => renderResults(globalData));
+/* SAVE PROVIDER */
+function saveProvider(p) {
+    fetch("/save", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(p)
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message);
+        loadSaved();
+    });
+}
+
+/* LOAD SAVED */
+function loadSaved() {
+    fetch("/saved")
+    .then(res => res.json())
+    .then(data => {
+        let html = "<h2>📌 Book of Business</h2>";
+
+        data.forEach(p => {
+            html += `
+            <div class="card">
+                <div class="name">${p.name}</div>
+                <div>NPI: ${p.npi}</div>
+
+                <label>Status:</label>
+                <select onchange="updateTag('${p.npi}', this.value)">
+                    <option ${p.tag=="New"?"selected":""}>New</option>
+                    <option ${p.tag=="Hot Lead"?"selected":""}>Hot Lead</option>
+                    <option ${p.tag=="Contacted"?"selected":""}>Contacted</option>
+                    <option ${p.tag=="Follow-up"?"selected":""}>Follow-up</option>
+                </select>
+
+                <br><br>
+
+                <label>Notes:</label>
+                <textarea 
+                    onchange="updateNotes('${p.npi}', this.value)"
+                    style="width:100%; height:60px;">${p.notes || ""}</textarea>
+
+                <br><br>
+
+                <button onclick="deleteProvider('${p.npi}')">Delete</button>
+            </div>
+            `;
+        });
+
+        document.getElementById("saved").innerHTML = html;
+    });
+}
+
+/* UPDATE NOTES */
+function updateNotes(npi, notes) {
+    fetch("/update", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ npi: npi, notes: notes })
+    });
+}
+
+/* UPDATE TAG */
+function updateTag(npi, tag) {
+    fetch("/update", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ npi: npi, tag: tag })
+    });
+}
+
+/* DELETE */
+function deleteProvider(npi) {
+    fetch("/delete", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ npi: npi })
+    })
+    .then(() => loadSaved());
+}
+
+/* AUTO LOAD */
+window.onload = loadSaved;
+
 </script>
 
 </body>
