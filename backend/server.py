@@ -1,73 +1,60 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 import requests
+import os
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder="templates")
 
+# HOME ROUTE (THIS LOADS YOUR UI)
 @app.route("/")
 def home():
-    return "ProviderIQ API is running 🚀"
+    return render_template("index.html")
 
 
-@app.route("/search", methods=["GET"])
+# SEARCH API
+@app.route("/search")
 def search():
     name = request.args.get("name")
 
     if not name:
-        return jsonify({"error": "Please provide a name"}), 400
+        return jsonify({"error": "No name provided"}), 400
+
+    # Split name into first + last (basic logic)
+    parts = name.split()
+    first = parts[0]
+    last = parts[1] if len(parts) > 1 else ""
 
     url = "https://npiregistry.cms.hhs.gov/api/"
+    params = {
+        "version": "2.1",
+        "first_name": first,
+        "last_name": last,
+        "limit": 10
+    }
+
+    response = requests.get(url, params=params)
+    data = response.json()
 
     results = []
 
-    try:
-        # 🔹 Try searching as FIRST NAME
-        params = {
-            "version": "2.1",
-            "first_name": name,
-            "enumeration_type": "NPI-1",
-            "limit": 10
-        }
+    for r in data.get("results", []):
+        basic = r.get("basic", {})
+        addr = r.get("addresses", [{}])[0]
 
-        response = requests.get(url, params=params)
-        data = response.json()
-
-        results = data.get("results", [])
-
-        # 🔹 If empty → try LAST NAME (fallback)
-        if not results:
-            params = {
-                "version": "2.1",
-                "last_name": name,
-                "enumeration_type": "NPI-1",
-                "limit": 10
-            }
-
-            response = requests.get(url, params=params)
-            data = response.json()
-            results = data.get("results", [])
-
-        formatted_results = []
-
-        for item in results:
-            basic = item.get("basic", {})
-            address = item.get("addresses", [{}])[0]
-
-            formatted_results.append({
-                "name": f"{basic.get('first_name', '')} {basic.get('last_name', '')}".strip(),
-                "state": address.get("state", ""),
-                "status": basic.get("status", ""),
-                "npi": item.get("number", "")
-            })
-
-        return jsonify({
-            "query": name,
-            "count": len(formatted_results),
-            "results": formatted_results
+        results.append({
+            "name": basic.get("name", ""),
+            "npi": r.get("number", ""),
+            "state": addr.get("state", ""),
+            "status": basic.get("status", "")
         })
 
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    return jsonify({
+        "count": len(results),
+        "query": name,
+        "results": results
+    })
 
 
+# IMPORTANT FOR RENDER DEPLOYMENT
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
