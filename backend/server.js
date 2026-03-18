@@ -6,6 +6,7 @@ const providerRoutes = require('./routes/providers');
 const bobRoutes = require('./routes/bob');
 
 const app = express();
+const providersRoute = require('./routes/providers');
 
 app.use(cors());
 app.use(express.json());
