@@ -109,7 +109,7 @@ provideriq/
 ### 1. Clone and configure
 ```bash
 cp .env.example .env
-# Edit .env with your values
+# Edit .env with your values for PostgreSQL, Redis, JWT, and optional OpenAI access
 ```
 
 ### 2. Start with Docker
@@ -130,13 +130,21 @@ cd backend && npm run workers
 ```
 
 ### 4. Access
-- Frontend: http://localhost:3000
+- Frontend landing page: http://localhost:3000
+- App login: http://localhost:3000/auth/login
 - API: http://localhost:4000
 - Health: http://localhost:4000/health
 
 ### Default Login
 - Email: `admin@provideriq.com`
 - Password: `Admin123!`
+
+
+## Repository Notes
+
+- The repository now includes a root `.env.example` so you can push it to GitHub with a clear local setup template.
+- The frontend root route (`/`) is a public landing page that explains the project before users sign in.
+- AI routes stay disabled until `OPENAI_API_KEY` is configured.
 
 ---
 

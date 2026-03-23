@@ -33,6 +33,8 @@ const analyticsRoutes = require('./routes/analytics');
 const aiRoutes = require('./routes/ai');
 const communicationRoutes = require('./routes/communications');
 const scrapeRoutes = require('./routes/scrape');
+const sourcingRoutes = require('./routes/sourcing');
+const bookOfBusinessRoutes = require('./routes/bookOfBusiness');
 const adminRoutes = require('./routes/admin');
 
 const app = express();
@@ -139,6 +141,8 @@ app.use('/api/analytics', authenticateToken, analyticsRoutes);
 app.use('/api/ai', authenticateToken, aiLimiter, aiRoutes);
 app.use('/api/communications', authenticateToken, communicationRoutes);
 app.use('/api/scrape', authenticateToken, scrapeRoutes);
+app.use('/api/sourcing', authenticateToken, sourcingRoutes);
+app.use('/api/book-of-business', authenticateToken, bookOfBusinessRoutes);
 app.use('/api/admin', authenticateToken, adminRoutes);
 
 // ─── 404 Handler ──────────────────────────────────────────────
@@ -176,6 +180,8 @@ async function bootstrap() {
   }
 }
 
-bootstrap();
+if (require.main === module) {
+  bootstrap();
+}
 
-module.exports = { app, io };
+module.exports = { app, io, bootstrap };

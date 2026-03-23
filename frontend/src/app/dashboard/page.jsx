@@ -207,7 +207,7 @@ export default function DashboardPage() {
                     animate={{ width: `${stage.rate}%` }}
                     transition={{ delay: 0.4 + i * 0.05, duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
                     className="h-full rounded-full"
-                    style={{ backgroundColor: PIPELINE_COLORS[stage.stage] }}
+                    style={{ backgroundColor: PIPELINE_COLORS[String(stage.stage).toLowerCase()] || '#94a3b8' }}
                   />
                 </div>
               </div>
