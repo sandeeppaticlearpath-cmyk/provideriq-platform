@@ -2,6 +2,21 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { api } from '@/lib/api';
 
+function normalizeUser(user) {
+  if (!user) return null;
+  if (user.org) return user;
+
+  return {
+    ...user,
+    org: user.orgId ? {
+      id: user.orgId,
+      name: user.orgName,
+      slug: user.orgSlug,
+      plan: user.orgPlan,
+    } : undefined,
+  };
+}
+
 export const useAuthStore = create(
   persist(
     (set, get) => ({
@@ -14,7 +29,12 @@ export const useAuthStore = create(
         const { data } = await api.post('/auth/login', { email, password, orgSlug });
         localStorage.setItem('accessToken', data.accessToken);
         localStorage.setItem('refreshToken', data.refreshToken);
-        set({ user: data.user, accessToken: data.accessToken, refreshToken: data.refreshToken, isAuthenticated: true });
+        set({
+          user: normalizeUser(data.user),
+          accessToken: data.accessToken,
+          refreshToken: data.refreshToken,
+          isAuthenticated: true,
+        });
         return data;
       },
 
@@ -29,10 +49,24 @@ export const useAuthStore = create(
 
       fetchMe: async () => {
         const { data } = await api.get('/auth/me');
-        set({ user: data, isAuthenticated: true });
+        set({ user: normalizeUser(data), isAuthenticated: true });
         return data;
       },
     }),
-    { name: 'provideriq-auth', partialize: (s) => ({ user: s.user, accessToken: s.accessToken, refreshToken: s.refreshToken, isAuthenticated: s.isAuthenticated }) }
+    {
+      name: 'provideriq-auth',
+      partialize: (state) => ({
+        user: state.user,
+        accessToken: state.accessToken,
+        refreshToken: state.refreshToken,
+        isAuthenticated: state.isAuthenticated,
+      }),
+      onRehydrateStorage: () => (state) => {
+        if (state?.accessToken) {
+          state.isAuthenticated = true;
+        }
+        state.user = normalizeUser(state?.user);
+      },
+    }
   )
 );

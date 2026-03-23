@@ -15,7 +15,7 @@ const logger = require('../utils/logger');
 
 const router = express.Router();
 
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'refresh-secret-change-me';
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || ((process.env.JWT_SECRET || 'change-me-in-production') + '_refresh');
 const jwt = require('jsonwebtoken');
 
 // ─── Login ────────────────────────────────────────────────────
@@ -104,7 +104,7 @@ router.post('/refresh', async (req, res) => {
     // Verify refresh token
     let decoded;
     try {
-      decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET + '_refresh');
+      decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET);
     } catch {
       return res.status(401).json({ error: 'Invalid refresh token' });
     }

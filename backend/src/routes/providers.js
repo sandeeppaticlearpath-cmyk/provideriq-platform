@@ -6,7 +6,7 @@
 const express = require('express');
 const { query } = require('../db/connection');
 const { requireRole, requireOrgAccess } = require('../middleware/auth');
-const { queueEnrichment } = require('../workers/enrichment');
+const { queueEnrichment } = require('../workers');
 const logger = require('../utils/logger');
 
 const router = express.Router();

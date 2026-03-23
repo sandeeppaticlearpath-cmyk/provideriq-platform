@@ -10,12 +10,31 @@ const { requireOrgAccess } = require('../middleware/auth');
 const logger = require('../utils/logger');
 
 const router = express.Router();
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const MODEL = 'gpt-4o';
+
+function getOpenAI() {
+  if (!process.env.OPENAI_API_KEY) {
+    return null;
+  }
+
+  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+}
+
+function requireOpenAI(res) {
+  const client = getOpenAI();
+  if (!client) {
+    res.status(503).json({ error: 'AI features are not configured. Set OPENAI_API_KEY to enable them.' });
+    return null;
+  }
+  return client;
+}
 
 // ─── Generate Outreach Email ──────────────────────────────────
 router.post('/generate-email', requireOrgAccess, async (req, res) => {
   try {
+    const openai = requireOpenAI(res);
+    if (!openai) return;
+
     const { candidateId, jobId, emailType = 'initial_outreach', customContext } = req.body;
 
     // Fetch candidate and job details
@@ -216,6 +235,8 @@ Provide a match analysis as JSON with:
 // ─── Summarize Provider Profile ───────────────────────────────
 router.post('/summarize-provider', requireOrgAccess, async (req, res) => {
   try {
+    const openai = requireOpenAI(res);
+    if (!openai) return;
     const { candidateId } = req.body;
 
     const result = await query(
@@ -268,6 +289,8 @@ Return JSON with: summary (string), highlights (string[] of 4-5 key points), yea
 // ─── Generate Follow-up Sequence ──────────────────────────────
 router.post('/generate-sequence', requireOrgAccess, async (req, res) => {
   try {
+    const openai = requireOpenAI(res);
+    if (!openai) return;
     const { candidateId, jobId, sequenceLength = 3 } = req.body;
 
     const [candidateRes, jobRes] = await Promise.all([
